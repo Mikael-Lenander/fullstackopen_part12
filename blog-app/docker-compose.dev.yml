@@ -1,0 +1,46 @@
+services:
+  server:
+    image: blog-backend-dev
+    volumes:
+      - ./backend:/usr/src/app
+    ports:
+      - 3003:3003
+    environment: 
+      ACCESS_TOKEN_SECRET_FILE: /run/secrets/access_token_secret
+      LOCAL_DB_URI: mongodb://the_username:the_password@mongo:27017/the_database
+    secrets:
+      - access_token_secret
+  mongo:
+    image: mongo
+    ports:
+      - 3456:27017
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: the_database
+    volumes: 
+      - ./backend/mongo/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js
+      - ./backend/mongo_data:/data/db
+  app:
+    image: blog-frontend-dev
+    build:
+      context: ./frontend
+      dockerfile: dev.Dockerfile
+    volumes:
+      - ./frontend/src:/usr/src/app/src
+    ports:
+      - 3000:3000
+    container_name: blog-frontend-dev
+  nginx:
+    image: nginx:1.20.1
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    ports:
+      - 8080:80
+    container_name: reverse-proxy
+    depends_on:
+      - app # wait for the frontend container to be started
+
+secrets:
+  access_token_secret:
+    file: backend/secrets/access_token_secret.txt
